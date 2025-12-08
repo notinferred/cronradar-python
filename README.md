@@ -14,10 +14,29 @@ pip install cronradar
 import cronradar
 
 # After your cron job completes successfully
-cronradar.ping('daily-backup')
+cronradar.monitor('daily-backup')
 
 # With self-healing (auto-register if monitor doesn't exist)
-cronradar.ping('daily-backup', schedule='0 2 * * *')
+cronradar.monitor('daily-backup', schedule='0 2 * * *')
+```
+
+## Lifecycle Tracking
+
+**Option 1: Context Manager (Automatic)**
+```python
+with cronradar.job('daily-backup', schedule='0 2 * * *'):
+    run_backup()
+```
+
+**Option 2: Manual**
+```python
+cronradar.start_job('daily-backup')
+try:
+    run_backup()
+    cronradar.complete_job('daily-backup')
+except Exception as e:
+    cronradar.fail_job('daily-backup', str(e))
+    raise
 ```
 
 ## Configuration

@@ -10,17 +10,20 @@ import sys
 import base64
 import json
 import traceback
-from typing import Optional
+import functools
+from typing import Optional, Callable, Any
+from contextlib import contextmanager
 from urllib.request import Request, urlopen
 from urllib.error import URLError, HTTPError
+from urllib.parse import quote
 
 
 __version__ = "0.0.3"
 
 
-def ping(monitor_key: str, schedule: Optional[str] = None) -> None:
+def monitor(monitor_key: str, schedule: Optional[str] = None) -> None:
     """
-    Ping CronRadar to indicate your job has run successfully.
+    Monitor a job execution by recording it in CronRadar.
     Optionally provide schedule for self-healing (auto-registration on 404).
 
     Args:
@@ -54,7 +57,107 @@ def ping(monitor_key: str, schedule: Optional[str] = None) -> None:
     except Exception as e:
         # Never throw - protect user's job execution
         # Optionally log for debugging
-        print(f"[CronRadar] Error during ping: {e}", file=sys.stderr)
+        print(f"[CronRadar] Error during monitor: {e}", file=sys.stderr)
+
+
+def start_job(monitor_key: str, schedule: Optional[str] = None) -> None:
+    """
+    Signal that a job has started executing.
+    Used for lifecycle tracking to detect hung jobs and measure execution duration.
+
+    Args:
+        monitor_key: The monitor key identifying your job
+        schedule: Optional cron schedule for auto-registration if monitor doesn't exist
+
+    Returns:
+        None
+
+    Raises:
+        Never throws - all errors are suppressed to protect job execution
+    """
+    try:
+        api_key = os.environ.get('CRONRADAR_API_KEY', '')
+        if not api_key:
+            return
+
+        _send_lifecycle_ping(monitor_key, 'start', api_key, schedule)
+    except Exception as e:
+        print(f"[CronRadar] Error during start_job: {e}", file=sys.stderr)
+
+
+def complete_job(monitor_key: str) -> None:
+    """
+    Signal that a job has completed successfully.
+    Used for lifecycle tracking to record completion time and calculate duration.
+
+    Args:
+        monitor_key: The monitor key identifying your job
+
+    Returns:
+        None
+
+    Raises:
+        Never throws - all errors are suppressed to protect job execution
+    """
+    try:
+        api_key = os.environ.get('CRONRADAR_API_KEY', '')
+        if not api_key:
+            return
+
+        _send_lifecycle_ping(monitor_key, 'complete', api_key)
+    except Exception as e:
+        print(f"[CronRadar] Error during complete_job: {e}", file=sys.stderr)
+
+
+def fail_job(monitor_key: str, message: Optional[str] = None) -> None:
+    """
+    Signal that a job has failed.
+    Triggers immediate alerts without waiting for grace period.
+
+    Args:
+        monitor_key: The monitor key identifying your job
+        message: Optional failure message for debugging
+
+    Returns:
+        None
+
+    Raises:
+        Never throws - all errors are suppressed to protect job execution
+    """
+    try:
+        api_key = os.environ.get('CRONRADAR_API_KEY', '')
+        if not api_key:
+            return
+
+        _send_lifecycle_ping(monitor_key, 'fail', api_key, message=message)
+    except Exception as e:
+        print(f"[CronRadar] Error during fail_job: {e}", file=sys.stderr)
+
+
+@contextmanager
+def job(monitor_key: str, schedule: Optional[str] = None):
+    """
+    Context manager for monitoring code blocks with lifecycle tracking.
+    Handles start/complete/fail signals automatically.
+
+    Example:
+        with cronradar.job('backup-job', schedule='0 2 * * *'):
+            run_backup()
+
+    Args:
+        monitor_key: The monitor key identifying your job
+        schedule: Optional cron schedule for auto-registration
+
+    Yields:
+        None
+    """
+    start_job(monitor_key, schedule)
+    try:
+        yield
+        complete_job(monitor_key)
+    except Exception as e:
+        fail_job(monitor_key, str(e))
+        raise  # Re-raise to preserve original behavior
 
 
 def sync_monitor(
@@ -98,7 +201,7 @@ def sync_monitor(
             }]
         }
 
-        url = 'https://api.cronradar.com/api/sync'
+        url = 'https://cron.life/api/sync'
 
         # Prepare request
         data = json.dumps(sync_request).encode('utf-8')
@@ -125,8 +228,7 @@ def sync_monitor(
 def _send_ping_internal(monitor_key: str, api_key: str) -> Optional[int]:
     """Send ping internally and return status code."""
     try:
-        from urllib.parse import quote
-        url = f"https://api.cronradar.com/ping/{quote(monitor_key, safe='')}"
+        url = f"https://cron.life/ping/{quote(monitor_key, safe='')}"
 
         # Prepare request
         auth_string = f"{api_key}:".encode('utf-8')
@@ -143,6 +245,43 @@ def _send_ping_internal(monitor_key: str, api_key: str) -> Optional[int]:
         return e.code
     except Exception:
         return None
+
+
+def _send_lifecycle_ping(
+    monitor_key: str,
+    endpoint: str,
+    api_key: str,
+    schedule: Optional[str] = None,
+    message: Optional[str] = None
+) -> None:
+    """Send lifecycle ping (start/complete/fail) internally."""
+    try:
+        # Build URL
+        url = f"https://cron.life/ping/{quote(monitor_key, safe='')}/{endpoint}"
+
+        # Add query parameters
+        params = []
+        if schedule:
+            params.append(f"schedule={quote(schedule)}")
+        if message:
+            params.append(f"message={quote(message)}")
+
+        if params:
+            url += "?" + "&".join(params)
+
+        # Prepare request
+        auth_string = f"{api_key}:".encode('utf-8')
+        auth_header = base64.b64encode(auth_string).decode('ascii')
+
+        request = Request(url, method='POST')
+        request.add_header('Authorization', f'Basic {auth_header}')
+
+        # Send request with timeout
+        urlopen(request, timeout=5)
+
+    except Exception:
+        # Silently fail to protect job execution
+        pass
 
 
 def _detect_source() -> str:
@@ -218,4 +357,12 @@ def _generate_readable_name(monitor_key: str) -> str:
 
 
 # Export public API
-__all__ = ['ping', 'sync_monitor', '__version__']
+__all__ = [
+    'monitor',  # Simple monitoring function
+    'start_job',
+    'complete_job',
+    'fail_job',
+    'job',  # Context manager for automatic lifecycle
+    'sync_monitor',
+    '__version__'
+]
