@@ -228,14 +228,10 @@ def sync_monitor(
 def _send_ping_internal(monitor_key: str, api_key: str) -> Optional[int]:
     """Send ping internally and return status code."""
     try:
-        url = f"https://cron.life/ping/{quote(monitor_key, safe='')}"
-
-        # Prepare request
-        auth_string = f"{api_key}:".encode('utf-8')
-        auth_header = base64.b64encode(auth_string).decode('ascii')
+        # URL-based auth: /ping/{monitor_key}/{api_key}
+        url = f"https://cron.life/ping/{quote(monitor_key, safe='')}/{quote(api_key, safe='')}"
 
         request = Request(url, method='GET')
-        request.add_header('Authorization', f'Basic {auth_header}')
 
         # Send request with timeout
         response = urlopen(request, timeout=5)
@@ -256,8 +252,8 @@ def _send_lifecycle_ping(
 ) -> None:
     """Send lifecycle ping (start/complete/fail) internally."""
     try:
-        # Build URL
-        url = f"https://cron.life/ping/{quote(monitor_key, safe='')}/{endpoint}"
+        # URL-based auth: /ping/{monitor_key}/{api_key}/{endpoint}
+        url = f"https://cron.life/ping/{quote(monitor_key, safe='')}/{quote(api_key, safe='')}/{endpoint}"
 
         # Add query parameters
         params = []
@@ -269,12 +265,7 @@ def _send_lifecycle_ping(
         if params:
             url += "?" + "&".join(params)
 
-        # Prepare request
-        auth_string = f"{api_key}:".encode('utf-8')
-        auth_header = base64.b64encode(auth_string).decode('ascii')
-
         request = Request(url, method='POST')
-        request.add_header('Authorization', f'Basic {auth_header}')
 
         # Send request with timeout
         urlopen(request, timeout=5)
