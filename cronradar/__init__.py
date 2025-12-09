@@ -15,10 +15,10 @@ from urllib.request import Request, urlopen
 from urllib.error import URLError, HTTPError
 
 
-__version__ = "1.0.0"
+__version__ = "0.0.2"
 
 
-def ping(monitor_key: str, schedule: Optional[str] = None, grace_period: Optional[int] = None) -> None:
+def ping(monitor_key: str, schedule: Optional[str] = None) -> None:
     """
     Ping CronRadar to indicate your job has run successfully.
     Optionally provide schedule for self-healing (auto-registration on 404).
@@ -26,7 +26,6 @@ def ping(monitor_key: str, schedule: Optional[str] = None, grace_period: Optiona
     Args:
         monitor_key: The monitor key identifying your job
         schedule: Optional cron schedule for auto-registration if monitor doesn't exist
-        grace_period: Optional grace period in seconds for auto-registration
 
     Returns:
         None
@@ -48,7 +47,7 @@ def ping(monitor_key: str, schedule: Optional[str] = None, grace_period: Optiona
             print(f"[CronRadar] Monitor '{monitor_key}' not found. Auto-registering with schedule '{schedule}'...", file=sys.stderr)
 
             source = _detect_source()
-            sync_monitor(monitor_key, schedule, source=source, grace_period=grace_period or 60)
+            sync_monitor(monitor_key, schedule, source=source)
 
             # Retry ping
             _send_ping_internal(monitor_key, api_key)
@@ -62,8 +61,7 @@ def sync_monitor(
     monitor_key: str,
     schedule: str,
     source: Optional[str] = None,
-    name: Optional[str] = None,
-    grace_period: int = 60
+    name: Optional[str] = None
 ) -> None:
     """
     Register a monitor with CronRadar, setting up expectations for when it should run.
@@ -74,7 +72,6 @@ def sync_monitor(
         schedule: Cron expression defining when the job runs
         source: Source framework (e.g., "celery", "airflow"). Auto-detected if None.
         name: Human-readable name. Generated from key if None.
-        grace_period: Grace period in seconds before alerting (default: 60)
 
     Returns:
         None
@@ -97,12 +94,11 @@ def sync_monitor(
                 'key': monitor_key,
                 'name': name,
                 'schedule': schedule,
-                'gracePeriod': grace_period
+                'gracePeriod': 60
             }]
         }
 
-        base_url = os.environ.get('CRONRADAR_BASE_URL', 'https://cronradar.com')
-        url = f"{base_url.rstrip('/')}/api/sync"
+        url = 'https://api.cronradar.com/api/sync'
 
         # Prepare request
         data = json.dumps(sync_request).encode('utf-8')
@@ -129,17 +125,14 @@ def sync_monitor(
 def _send_ping_internal(monitor_key: str, api_key: str) -> Optional[int]:
     """Send ping internally and return status code."""
     try:
-        method = os.environ.get('CRONRADAR_METHOD', 'GET').upper()
-        base_url = os.environ.get('CRONRADAR_BASE_URL', 'https://cronradar.com')
-
         from urllib.parse import quote
-        url = f"{base_url.rstrip('/')}/ping/{quote(monitor_key, safe='')}"
+        url = f"https://api.cronradar.com/ping/{quote(monitor_key, safe='')}"
 
         # Prepare request
         auth_string = f"{api_key}:".encode('utf-8')
         auth_header = base64.b64encode(auth_string).decode('ascii')
 
-        request = Request(url, method=method)
+        request = Request(url, method='GET')
         request.add_header('Authorization', f'Basic {auth_header}')
 
         # Send request with timeout
