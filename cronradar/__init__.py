@@ -18,7 +18,7 @@ from urllib.error import URLError, HTTPError
 from urllib.parse import quote
 
 
-__version__ = "0.0.3"
+__version__ = "0.0.4"
 
 
 def monitor(monitor_key: str, schedule: Optional[str] = None) -> None:
