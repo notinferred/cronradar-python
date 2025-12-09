@@ -31,4 +31,4 @@ See [cronradar.com/docs](https://cronradar.com/docs) for full documentation.
 
 ## License
 
-MIT
+Proprietary - © 2025 CronRadar. All rights reserved.

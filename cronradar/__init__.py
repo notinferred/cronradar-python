@@ -15,7 +15,7 @@ from urllib.request import Request, urlopen
 from urllib.error import URLError, HTTPError
 
 
-__version__ = "0.0.2"
+__version__ = "0.0.3"
 
 
 def ping(monitor_key: str, schedule: Optional[str] = None) -> None:
