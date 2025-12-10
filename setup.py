@@ -5,7 +5,7 @@ with open("README.md", "r", encoding="utf-8") as fh:
 
 setup(
     name="cronradar",
-    version="0.0.4",
+    version="0.0.5",
     author="Administrator",
     author_email="contact@cronradar.com",
     description="Dead-simple cron job monitoring with auto-registration. Two functions: ping() and sync_monitor(). Self-healing monitors.",
