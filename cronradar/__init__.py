@@ -17,8 +17,16 @@ from urllib.request import Request, urlopen
 from urllib.error import URLError, HTTPError
 from urllib.parse import quote
 
+from .constants import (
+    BASE_URL,
+    DEFAULT_TIMEOUT_SECONDS,
+    DEFAULT_GRACE_PERIOD_SECONDS,
+    API_KEY_ENV_VAR,
+    is_valid_monitor_key,
+)
 
-__version__ = "0.0.4"
+
+__version__ = "0.0.6"
 
 
 def monitor(monitor_key: str, schedule: Optional[str] = None) -> None:
@@ -37,7 +45,10 @@ def monitor(monitor_key: str, schedule: Optional[str] = None) -> None:
         Never throws - all errors are suppressed to protect job execution
     """
     try:
-        api_key = os.environ.get('CRONRADAR_API_KEY', '')
+        if not is_valid_monitor_key(monitor_key):
+            return
+
+        api_key = os.environ.get(API_KEY_ENV_VAR, '')
         if not api_key:
             print(f"[CronRadar] Warning: CRONRADAR_API_KEY environment variable not set. Monitor '{monitor_key}' will not be tracked.", file=sys.stderr)
             return
@@ -76,7 +87,10 @@ def start_job(monitor_key: str, schedule: Optional[str] = None) -> None:
         Never throws - all errors are suppressed to protect job execution
     """
     try:
-        api_key = os.environ.get('CRONRADAR_API_KEY', '')
+        if not is_valid_monitor_key(monitor_key):
+            return
+
+        api_key = os.environ.get(API_KEY_ENV_VAR, '')
         if not api_key:
             return
 
@@ -100,7 +114,10 @@ def complete_job(monitor_key: str) -> None:
         Never throws - all errors are suppressed to protect job execution
     """
     try:
-        api_key = os.environ.get('CRONRADAR_API_KEY', '')
+        if not is_valid_monitor_key(monitor_key):
+            return
+
+        api_key = os.environ.get(API_KEY_ENV_VAR, '')
         if not api_key:
             return
 
@@ -125,7 +142,10 @@ def fail_job(monitor_key: str, message: Optional[str] = None) -> None:
         Never throws - all errors are suppressed to protect job execution
     """
     try:
-        api_key = os.environ.get('CRONRADAR_API_KEY', '')
+        if not is_valid_monitor_key(monitor_key):
+            return
+
+        api_key = os.environ.get(API_KEY_ENV_VAR, '')
         if not api_key:
             return
 
@@ -183,7 +203,10 @@ def sync_monitor(
         Never throws - all errors are suppressed to protect job execution
     """
     try:
-        api_key = os.environ.get('CRONRADAR_API_KEY', '')
+        if not is_valid_monitor_key(monitor_key):
+            return
+
+        api_key = os.environ.get(API_KEY_ENV_VAR, '')
         if not api_key:
             print(f"[CronRadar] Warning: CRONRADAR_API_KEY environment variable not set. Monitor '{monitor_key}' will not be synced.", file=sys.stderr)
             return
@@ -197,11 +220,11 @@ def sync_monitor(
                 'key': monitor_key,
                 'name': name,
                 'schedule': schedule,
-                'gracePeriod': 60
+                'gracePeriod': DEFAULT_GRACE_PERIOD_SECONDS
             }]
         }
 
-        url = 'https://cron.life/api/sync'
+        url = f"{BASE_URL}/api/sync"
 
         # Prepare request
         data = json.dumps(sync_request).encode('utf-8')
@@ -213,7 +236,7 @@ def sync_monitor(
         request.add_header('Authorization', f'Basic {auth_header}')
 
         # Send request with timeout
-        response = urlopen(request, timeout=5)
+        response = urlopen(request, timeout=DEFAULT_TIMEOUT_SECONDS)
 
         if 200 <= response.status < 300:
             print(f"[CronRadar] Monitor '{monitor_key}' synced successfully.", file=sys.stderr)
@@ -229,12 +252,12 @@ def _send_ping_internal(monitor_key: str, api_key: str) -> Optional[int]:
     """Send ping internally and return status code."""
     try:
         # URL-based auth: /ping/{monitor_key}/{api_key}
-        url = f"https://cron.life/ping/{quote(monitor_key, safe='')}/{quote(api_key, safe='')}"
+        url = f"{BASE_URL}/ping/{quote(monitor_key, safe='')}/{quote(api_key, safe='')}"
 
         request = Request(url, method='GET')
 
         # Send request with timeout
-        response = urlopen(request, timeout=5)
+        response = urlopen(request, timeout=DEFAULT_TIMEOUT_SECONDS)
         return response.status
 
     except HTTPError as e:
@@ -253,7 +276,7 @@ def _send_lifecycle_ping(
     """Send lifecycle ping (start/complete/fail) internally."""
     try:
         # URL-based auth: /ping/{monitor_key}/{api_key}/{endpoint}
-        url = f"https://cron.life/ping/{quote(monitor_key, safe='')}/{quote(api_key, safe='')}/{endpoint}"
+        url = f"{BASE_URL}/ping/{quote(monitor_key, safe='')}/{quote(api_key, safe='')}/{endpoint}"
 
         # Add query parameters
         params = []
@@ -268,7 +291,7 @@ def _send_lifecycle_ping(
         request = Request(url, method='POST')
 
         # Send request with timeout
-        urlopen(request, timeout=5)
+        urlopen(request, timeout=DEFAULT_TIMEOUT_SECONDS)
 
     except Exception:
         # Silently fail to protect job execution
