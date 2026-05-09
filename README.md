@@ -84,23 +84,23 @@ except Exception as e:
 
 ## Reference
 
-### `monitor(key, schedule=None, grace_period=None)`
+### `monitor(monitor_key, schedule=None)`
 
 Records a successful execution.
 
 ```python
 cronradar.monitor(key)
 cronradar.monitor(key, schedule='0 2 * * *')
-cronradar.monitor(key, schedule='0 2 * * *', grace_period=120)
 ```
 
 | Parameter | Type | Required | Notes |
 |---|---|---|---|
-| `key` | `str` | yes | Monitor key. Lowercase, kebab/snake/dot-case. Max 64 chars. |
+| `monitor_key` | `str` | yes | Monitor key. Lowercase, kebab/snake/dot-case. Max 200 chars. |
 | `schedule` | `str` | optional | Standard 5-field cron expression. Required on the *first* ping for self-healing registration. |
-| `grace_period` | `int` | optional | Seconds. How late the next ping can be before an alert fires. Default: 60. |
 
 Raises: never. Network errors and 4xx/5xx responses are caught and logged to `stderr`.
+
+Grace period is configured per-monitor on CronRadar (default 60 seconds; set via the dashboard or the `grace_period` argument to `sync_monitor`). It's not a per-ping argument.
 
 ### `start_job(key)`
 
@@ -137,12 +137,12 @@ cronradar.fail_job(key, 'Database connection refused')
 
 Triggers an immediate alert (no grace period). The message appears in the alert payload.
 
-### `job(key, schedule=None, grace_period=None)`
+### `job(monitor_key, schedule=None)`
 
 Returns a context manager that wraps a block with lifecycle tracking.
 
 ```python
-with cronradar.job(key, schedule='0 2 * * *') as ctx:
+with cronradar.job(key, schedule='0 2 * * *'):
     run_work()
 ```
 
@@ -175,9 +175,9 @@ Used internally by extensions; rarely needed in application code.
 | Environment variable | Required | Default | Purpose |
 |---|---|---|---|
 | `CRONRADAR_API_KEY` | yes | — | API key from the CronRadar dashboard. Format `ck_app_xxxxx`. |
-| `CRONRADAR_BASE_URL` | no | `https://cron.life` | Override the ingestion endpoint. Used for self-hosted or staging environments. |
-| `CRONRADAR_TIMEOUT` | no | `5.0` | HTTP request timeout in seconds (float). |
-| `CRONRADAR_LOG_ERRORS` | no | `1` | Set to `0` to suppress the stderr warnings the SDK emits on network failure. |
+| `CRONRADAR_DEBUG` | no | `false` | Set to `true` to log every request and error to stderr. |
+
+The base URL (`https://cron.life`), HTTP timeout (5 seconds), and default grace period (60 seconds) are constants in `cronradar/constants.py`. To customize them, fork the SDK or open an issue for a configurable hook.
 
 ## Error handling
 
@@ -196,7 +196,7 @@ What this looks like at runtime:
 | Block in `with cronradar.job(...)` raises | Records `fail_job`; re-raises | Receives the original exception |
 | `CRONRADAR_API_KEY` missing | Logs once per process; subsequent calls no-op | Continues normally |
 
-If you need to know whether a ping succeeded — for example, in tests — every function returns `None` either way; success is silent. Inspect `stderr` or set `CRONRADAR_LOG_ERRORS=1` (default) to see failures.
+If you need to know whether a ping succeeded — for example, in tests — every function returns `None` either way; success is silent. Set `CRONRADAR_DEBUG=true` to log every request and error to stderr.
 
 ## Troubleshooting
 
@@ -237,15 +237,15 @@ Three things to check, in order:
 2. **Network** — outbound HTTPS to `https://cron.life` may be blocked by firewall.
 3. **Process termination** — short-lived scripts may exit before the HTTP request completes. The SDK uses synchronous requests by default so this is uncommon, but if you've configured an async transport, ensure your event loop has time to flush.
 
-### Errors are noisy in development
+### I want to see what the SDK is doing in development
 
-Set `CRONRADAR_LOG_ERRORS=0` in dev environments where you don't have a real API key set:
+By default the SDK is silent. To see every request and error path, enable debug:
 
 ```bash
-CRONRADAR_LOG_ERRORS=0 python my_job.py
+CRONRADAR_DEBUG=true python my_job.py
 ```
 
-The SDK still no-ops cleanly; it just stops complaining.
+If `CRONRADAR_API_KEY` is unset entirely, the SDK no-ops every call without logging.
 
 ## Links
 
