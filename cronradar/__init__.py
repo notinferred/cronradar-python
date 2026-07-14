@@ -26,7 +26,7 @@ from .constants import (
 )
 
 
-__version__ = "0.0.6"
+__version__ = "0.1.0"
 
 
 def monitor(monitor_key: str, schedule: Optional[str] = None) -> None:
@@ -248,6 +248,74 @@ def sync_monitor(
         # Never throw - protect user's job execution
 
 
+def sync_monitors(
+    monitors,
+    source: Optional[str] = None,
+    version: Optional[str] = None,
+) -> None:
+    """
+    Reconcile the complete set of monitors for a source in a single request.
+    Extensions call this on startup and periodically to declare every discovered
+    job (the authoritative set), so dead-man coverage exists before a job ever runs.
+
+    Args:
+        monitors: Iterable of dicts, each with 'key' and 'schedule' (required) and
+                  optional 'name' and 'grace_period'.
+        source: Source framework (e.g., "celery"). Auto-detected if None.
+        version: Extension version reported to the server. Defaults to this SDK version.
+
+    Raises:
+        Never throws - all errors are suppressed to protect the application.
+    """
+    try:
+        payload_monitors = []
+        for m in (monitors or []):
+            key = m.get('key')
+            schedule = m.get('schedule')
+            if not key or not schedule or not is_valid_monitor_key(key):
+                continue
+            payload_monitors.append({
+                'key': key,
+                'name': m.get('name') or _generate_readable_name(key),
+                'schedule': schedule,
+                'gracePeriod': m.get('grace_period', m.get('gracePeriod', DEFAULT_GRACE_PERIOD_SECONDS)),
+            })
+
+        api_key = os.environ.get(API_KEY_ENV_VAR, '')
+        if not api_key:
+            print(f"[CronRadar] Warning: CRONRADAR_API_KEY environment variable not set. {len(payload_monitors)} monitor(s) will not be synced.", file=sys.stderr)
+            return
+
+        source = source or _detect_source()
+
+        sync_request = {
+            'source': source,
+            'version': version or __version__,
+            'mode': 'reconcile',
+            'monitors': payload_monitors,
+        }
+
+        url = f"{BASE_URL}/api/sync"
+        data = json.dumps(sync_request).encode('utf-8')
+        auth_string = f"{api_key}:".encode('utf-8')
+        auth_header = base64.b64encode(auth_string).decode('ascii')
+
+        request = Request(url, data=data, method='POST')
+        request.add_header('Content-Type', 'application/json')
+        request.add_header('Authorization', f'Basic {auth_header}')
+
+        response = urlopen(request, timeout=DEFAULT_TIMEOUT_SECONDS)
+
+        if 200 <= response.status < 300:
+            print(f"[CronRadar] Reconciled {len(payload_monitors)} monitor(s) for source '{source}'.", file=sys.stderr)
+        else:
+            print(f"[CronRadar] Failed to reconcile monitors for source '{source}': HTTP {response.status}", file=sys.stderr)
+
+    except Exception as e:
+        print(f"[CronRadar] Error reconciling monitors: {e}", file=sys.stderr)
+        # Never throw - protect user's application
+
+
 def _send_ping_internal(monitor_key: str, api_key: str) -> Optional[int]:
     """Send ping internally and return status code."""
     try:
@@ -378,5 +446,6 @@ __all__ = [
     'fail_job',
     'job',  # Context manager for automatic lifecycle
     'sync_monitor',
+    'sync_monitors',
     '__version__'
 ]
