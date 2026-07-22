@@ -34,7 +34,7 @@ class TestMonitor:
         assert mock_urlopen.called
         call_args = mock_urlopen.call_args
         request = call_args[0][0]
-        assert 'ping/test-job/test-api-key-123' in request.full_url
+        assert '/api/v1/ping/test-job/test-api-key-123' in request.full_url
         assert request.method == 'GET'
 
     def test_does_not_throw_when_api_key_missing(self):
@@ -253,7 +253,7 @@ class TestSyncMonitor:
 
     @patch('cronradar.urlopen')
     def test_sends_post_to_api_sync(self, mock_urlopen):
-        """Should send POST to /api/sync."""
+        """Should send POST to /api/v1/sync."""
         mock_response = MagicMock()
         mock_response.status = 200
         mock_urlopen.return_value = mock_response
@@ -261,7 +261,7 @@ class TestSyncMonitor:
         cronradar.sync_monitor('test-job', '* * * * *')
 
         request = mock_urlopen.call_args[0][0]
-        assert '/api/sync' in request.full_url
+        assert '/api/v1/sync' in request.full_url
         assert request.method == 'POST'
 
     @patch('cronradar.urlopen')

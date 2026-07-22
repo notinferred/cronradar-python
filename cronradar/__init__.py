@@ -224,7 +224,7 @@ def sync_monitor(
             }]
         }
 
-        url = f"{BASE_URL}/api/sync"
+        url = f"{BASE_URL}/api/v1/sync"
 
         # Prepare request
         data = json.dumps(sync_request).encode('utf-8')
@@ -295,7 +295,7 @@ def sync_monitors(
             'monitors': payload_monitors,
         }
 
-        url = f"{BASE_URL}/api/sync"
+        url = f"{BASE_URL}/api/v1/sync"
         data = json.dumps(sync_request).encode('utf-8')
         auth_string = f"{api_key}:".encode('utf-8')
         auth_header = base64.b64encode(auth_string).decode('ascii')
@@ -319,8 +319,8 @@ def sync_monitors(
 def _send_ping_internal(monitor_key: str, api_key: str) -> Optional[int]:
     """Send ping internally and return status code."""
     try:
-        # URL-based auth: /ping/{monitor_key}/{api_key}
-        url = f"{BASE_URL}/ping/{quote(monitor_key, safe='')}/{quote(api_key, safe='')}"
+        # URL-based auth: /api/v1/ping/{monitor_key}/{api_key}
+        url = f"{BASE_URL}/api/v1/ping/{quote(monitor_key, safe='')}/{quote(api_key, safe='')}"
 
         request = Request(url, method='GET')
 
@@ -343,8 +343,8 @@ def _send_lifecycle_ping(
 ) -> None:
     """Send lifecycle ping (start/complete/fail) internally."""
     try:
-        # URL-based auth: /ping/{monitor_key}/{api_key}/{endpoint}
-        url = f"{BASE_URL}/ping/{quote(monitor_key, safe='')}/{quote(api_key, safe='')}/{endpoint}"
+        # URL-based auth: /api/v1/ping/{monitor_key}/{api_key}/{endpoint}
+        url = f"{BASE_URL}/api/v1/ping/{quote(monitor_key, safe='')}/{quote(api_key, safe='')}/{endpoint}"
 
         # Add query parameters
         params = []
