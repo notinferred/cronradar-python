@@ -269,7 +269,8 @@ For Celery Beat tasks, keep the existing key with the integration's monitor-key 
 
 ## Links
 
-- **Documentation:** [docs.cronradar.com](https://docs.cronradar.com)
+- **Documentation:** [docs.cronradar.com/integrations/python](https://docs.cronradar.com/integrations/python)
+- **Monitoring overview:** [cronradar.com/python](https://cronradar.com/python)
 - **Agent-friendly index:** [docs.cronradar.com/llms.txt](https://docs.cronradar.com/llms.txt)
 - **OpenAPI spec:** [docs.cronradar.com/openapi.json](https://docs.cronradar.com/openapi.json)
 - **PyPI:** [pypi.org/project/cronradar](https://pypi.org/project/cronradar)

@@ -5,15 +5,16 @@ with open("README.md", "r", encoding="utf-8") as fh:
 
 setup(
     name="cronradar",
-    version="0.1.0",
-    author="Administrator",
-    author_email="contact@cronradar.com",
-    description="Dead-simple cron job monitoring with auto-registration. Two functions: ping() and sync_monitor(). Self-healing monitors.",
+    version="0.1.1",
+    author="CronRadar",
+    author_email="support@cronradar.com",
+    description="Non-blocking lifecycle and heartbeat monitoring for Python scheduled jobs, with missed-run, failure, and stuck-run detection.",
     long_description=long_description,
     long_description_content_type="text/markdown",
     url="https://github.com/cronradar/cronradar-python",
     project_urls={
-        "Documentation": "https://cronradar.com/docs",
+        "Documentation": "https://docs.cronradar.com/integrations/python",
+        "Product": "https://cronradar.com/python",
         "Source": "https://github.com/cronradar/cronradar-python",
         "Tracker": "https://github.com/cronradar/cronradar-python/issues",
     },
@@ -21,7 +22,6 @@ setup(
     classifiers=[
         "Development Status :: 5 - Production/Stable",
         "Intended Audience :: Developers",
-        "License :: Other/Proprietary License",
         "Operating System :: OS Independent",
         "Programming Language :: Python :: 3",
         "Programming Language :: Python :: 3.8",
@@ -33,6 +33,6 @@ setup(
         "Topic :: System :: Monitoring",
     ],
     python_requires=">=3.8",
-    keywords="cron monitoring scheduler job task ping sync auto-register",
+    keywords="cron monitoring scheduled-jobs recurring-jobs missed-jobs failed-jobs stuck-jobs heartbeat",
     license="Proprietary",
 )
