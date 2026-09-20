@@ -10,6 +10,29 @@ from urllib.error import HTTPError, URLError
 import cronradar
 
 
+@pytest.mark.parametrize('operation', [
+    lambda: cronradar.monitor('test-job'),
+    lambda: cronradar.start_job('test-job', schedule='0 * * * *'),
+    lambda: cronradar.complete_job('test-job'),
+    lambda: cronradar.fail_job('test-job', 'A sample failure'),
+    lambda: cronradar.sync_monitor('test-job', '0 * * * *'),
+    lambda: cronradar.sync_monitors([{'key': 'test-job', 'schedule': '0 * * * *'}]),
+])
+@patch('cronradar.urlopen')
+def test_all_requests_identify_the_sdk_without_exposing_credentials(mock_urlopen, operation, monkeypatch):
+    monkeypatch.setenv('CRONRADAR_API_KEY', 'test-api-key-123')
+    mock_urlopen.return_value.status = 200
+
+    operation()
+
+    assert mock_urlopen.call_count == 1
+    request = mock_urlopen.call_args.args[0]
+    user_agent = request.get_header('User-agent')
+    assert user_agent == f'CronRadar-Python/{cronradar.__version__} (+https://cronradar.com)'
+    assert 'test-api-key-123' not in user_agent
+    assert mock_urlopen.call_args.kwargs['timeout'] == 5
+
+
 class TestMonitor:
     """Tests for the monitor() function."""
 

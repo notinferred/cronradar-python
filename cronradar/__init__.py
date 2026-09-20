@@ -26,7 +26,8 @@ from .constants import (
 )
 
 
-__version__ = "0.1.0"
+__version__ = "0.1.1"
+_USER_AGENT = f"CronRadar-Python/{__version__} (+https://cronradar.com)"
 
 
 def monitor(monitor_key: str, schedule: Optional[str] = None) -> None:
@@ -231,7 +232,7 @@ def sync_monitor(
         auth_string = f"{api_key}:".encode('utf-8')
         auth_header = base64.b64encode(auth_string).decode('ascii')
 
-        request = Request(url, data=data, method='POST')
+        request = Request(url, data=data, method='POST', headers={'User-Agent': _USER_AGENT})
         request.add_header('Content-Type', 'application/json')
         request.add_header('Authorization', f'Basic {auth_header}')
 
@@ -300,7 +301,7 @@ def sync_monitors(
         auth_string = f"{api_key}:".encode('utf-8')
         auth_header = base64.b64encode(auth_string).decode('ascii')
 
-        request = Request(url, data=data, method='POST')
+        request = Request(url, data=data, method='POST', headers={'User-Agent': _USER_AGENT})
         request.add_header('Content-Type', 'application/json')
         request.add_header('Authorization', f'Basic {auth_header}')
 
@@ -322,7 +323,7 @@ def _send_ping_internal(monitor_key: str, api_key: str) -> Optional[int]:
         # URL-based auth: /api/v1/ping/{monitor_key}/{api_key}
         url = f"{BASE_URL}/api/v1/ping/{quote(monitor_key, safe='')}/{quote(api_key, safe='')}"
 
-        request = Request(url, method='GET')
+        request = Request(url, method='GET', headers={'User-Agent': _USER_AGENT})
 
         # Send request with timeout
         response = urlopen(request, timeout=DEFAULT_TIMEOUT_SECONDS)
@@ -356,7 +357,7 @@ def _send_lifecycle_ping(
         if params:
             url += "?" + "&".join(params)
 
-        request = Request(url, method='POST')
+        request = Request(url, method='POST', headers={'User-Agent': _USER_AGENT})
 
         # Send request with timeout
         urlopen(request, timeout=DEFAULT_TIMEOUT_SECONDS)
