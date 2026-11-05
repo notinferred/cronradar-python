@@ -34,5 +34,5 @@ setup(
     ],
     python_requires=">=3.8",
     keywords="cron monitoring scheduled-jobs recurring-jobs missed-jobs failed-jobs stuck-jobs heartbeat",
-    license="Proprietary",
+    license="MIT",
 )

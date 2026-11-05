@@ -280,4 +280,4 @@ For Celery Beat tasks, keep the existing key with the integration's monitor-key 
 
 ## License
 
-© 2026 [CronRadar](https://cronradar.com) · Proprietary — see [LICENSE](./LICENSE).
+© 2026 [CronRadar](https://cronradar.com) · MIT — see [LICENSE](./LICENSE).
