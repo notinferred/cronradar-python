@@ -35,19 +35,17 @@ The SDK does not require explicit initialization. The first call reads the env v
 ```python
 import cronradar
 
-# First-time call: pass schedule so the monitor auto-registers.
 cronradar.monitor('daily-backup', schedule='0 2 * * *')
-
-# Subsequent calls: just the key.
-cronradar.monitor('daily-backup')
 ```
 
 That's the minimal integration. CronRadar:
 
-- Creates the `daily-backup` monitor on the first ping (because `schedule` was provided)
-- Records each subsequent ping
+- Creates the `daily-backup` monitor on the first report (because `schedule` was provided)
+- Records each later report
 - Alerts you (email + any other configured channels) if the monitor doesn't ping within `0 2 * * *` plus its grace period
-- Re-creates the monitor if you delete it from the dashboard and the schedule param is still being passed
+- Re-creates the monitor if you delete it from the dashboard, because every report carries the schedule
+
+Pass the schedule on every report, not only the first.
 
 ## Manual lifecycle
 
@@ -97,8 +95,8 @@ cronradar.monitor(key, schedule='0 2 * * *')
 
 | Parameter | Type | Required | Notes |
 |---|---|---|---|
-| `monitor_key` | `str` | yes | Monitor key. Lowercase, kebab/snake/dot-case. Max 200 chars. |
-| `schedule` | `str` | optional | Standard 5-field cron expression. Required on the *first* ping for self-healing registration. |
+| `monitor_key` | `str` | yes | Monitor key. Lowercase, kebab/snake/dot-case. At most 100 characters, counted in UTF-16 code units as the server counts them; a longer key skips the call and writes a warning to stderr. |
+| `schedule` | `str` | optional | Standard 5-field cron expression. Pass it on every report so a missing or deleted monitor registers again. |
 
 Raises: never. Network errors and 4xx/5xx responses are caught and logged to `stderr`.
 
@@ -212,15 +210,13 @@ test -n "$CRONRADAR_API_KEY" && echo "CronRadar key is set" || echo "CronRadar k
 
 The key must match the one shown on **app.cronradar.com → your application → Settings → API Keys**. Keys are not retrievable after creation — if you lost it, create a new one and rotate.
 
-### `404 Monitor Not Found` on first ping
+### `404 Monitor Not Found`
 
-You called `monitor(key)` without a `schedule` for a brand-new key. The first ping must include `schedule` so CronRadar can register the monitor:
+You called `monitor(key)` without a `schedule` for a key CronRadar doesn't have: a new key, or a monitor deleted from the dashboard. Pass `schedule` on every report so CronRadar registers the monitor whenever it is missing:
 
 ```python
 cronradar.monitor('daily-backup', schedule='0 2 * * *')
 ```
-
-Subsequent pings can omit `schedule`. If you delete the monitor from the dashboard and the next ping doesn't include `schedule`, you'll see the same 404.
 
 ### My cron expression is rejected
 

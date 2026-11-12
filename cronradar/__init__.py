@@ -26,7 +26,7 @@ from .constants import (
 )
 
 
-__version__ = "0.1.1"
+__version__ = "0.1.2"
 _USER_AGENT = f"CronRadar-Python/{__version__} (+https://cronradar.com)"
 
 

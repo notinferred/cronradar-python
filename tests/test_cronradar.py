@@ -46,6 +46,29 @@ class TestMonitor:
             del os.environ['CRONRADAR_API_KEY']
 
     @patch('cronradar.urlopen')
+    def test_accepts_100_characters_and_skips_101_with_a_warning(self, mock_urlopen, capsys):
+        """Keys are limited to 100 UTF-16 code units, like the server."""
+        mock_urlopen.return_value = MagicMock(status=200)
+
+        cronradar.monitor('k' * 100)
+        cronradar.monitor('k' * 101)
+
+        assert mock_urlopen.call_count == 1
+        assert 'length 101 exceeds maximum of 100' in capsys.readouterr().err
+
+    @patch('cronradar.urlopen')
+    def test_counts_non_ascii_keys_in_utf16_code_units(self, mock_urlopen, capsys):
+        """An emoji is two UTF-16 code units, so 50 of them fill the limit and 51 exceed it."""
+        mock_urlopen.return_value = MagicMock(status=200)
+
+        cronradar.monitor('\U0001F680' * 50)
+        cronradar.monitor('\U0001F680' * 51)
+        cronradar.monitor('\u00e9' * 100)
+
+        assert mock_urlopen.call_count == 2
+        assert 'length 102 exceeds maximum of 100' in capsys.readouterr().err
+
+    @patch('cronradar.urlopen')
     def test_sends_get_request_to_correct_url(self, mock_urlopen):
         """Should send GET request to correct URL."""
         mock_response = MagicMock()

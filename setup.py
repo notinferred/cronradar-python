@@ -5,7 +5,7 @@ with open("README.md", "r", encoding="utf-8") as fh:
 
 setup(
     name="cronradar",
-    version="0.1.1",
+    version="0.1.2",
     author="CronRadar",
     author_email="support@cronradar.com",
     description="Non-blocking lifecycle and heartbeat monitoring for Python scheduled jobs, with missed-run, failure, and stuck-run detection.",
