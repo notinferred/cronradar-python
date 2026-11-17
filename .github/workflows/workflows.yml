@@ -1,0 +1,45 @@
+name: Publish to PyPI
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing release tag to publish, such as v0.1.2
+        required: true
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write   # required for PyPI Trusted Publishing (OIDC)
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag || github.ref }}
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Test
+        run: |
+          pip install -e . pytest
+          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+          python -m pytest -q
+
+      - name: Check the tag matches the package version
+        run: |
+          tag="${{ inputs.tag || github.ref_name }}"
+          version="$(python setup.py --version)"
+          test "v$version" = "$tag" || { echo "Tag $tag does not match version $version"; exit 1; }
+
+      - name: Build
+        run: |
+          pip install build
+          python -m build
+
+      - uses: pypa/gh-action-pypi-publish@release/v1
