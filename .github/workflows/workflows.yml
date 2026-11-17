@@ -34,7 +34,7 @@ jobs:
       - name: Check the tag matches the package version
         run: |
           tag="${{ inputs.tag || github.ref_name }}"
-          version="$(python setup.py --version)"
+          version="$(sed -n 's/^ *version="\([^"]*\)".*/\1/p' setup.py | head -1)"
           test "v$version" = "$tag" || { echo "Tag $tag does not match version $version"; exit 1; }
 
       - name: Build
